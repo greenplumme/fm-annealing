@@ -20,10 +20,17 @@ S_1 = \int \eta(t) \, dt
 
 
 ### ✔ **Annealing Momentum**
-A practical proxy for the *kinetic effect* of learning-rate decay, defined via a momentum-style update: $$ S_2 = \sum_t \frac{m_t}{\sqrt{v_t}+\epsilon}$$ capturing both the **rate** and **magnitude** of decay during annealing.
+A practical proxy for the *kinetic effect* of learning-rate decay, defined via a momentum-style update: 
+```math
+S_2 = \sum_t \frac{m_t}{\sqrt{v_t}+\epsilon}
+```
+capturing both the **rate** and **magnitude** of decay during annealing.
 
 ### ✔ **Forward–Momentum Scaling Law** 
-A unified scaling formulation: $$ L = L_0 + \frac{\lambda_S}{S^{\alpha_S}} + \frac{\lambda_N}{N^{\alpha_N}} + \lambda_M \cdot M $$
+A unified scaling formulation: 
+```math 
+L = L_0 + \frac{\lambda_S}{S^{\alpha_S}} + \frac{\lambda_N}{N^{\alpha_N}} + \lambda_M \cdot M
+```
 
 ### ✔ **Robust Curve Fitting**
 Robust Huber-loss optimization with L-BFGS-B for stable estimation of scaling parameters.
