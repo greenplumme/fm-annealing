@@ -8,11 +8,11 @@ epsilon = 1e-8
 # ---------------------------------------------------------
 # 1. Forward effect S: ∫ η(t) dt
 # ---------------------------------------------------------
-def compute_S1(steps, lrs):
+def compute_S(steps, lrs):
     """
-    Compute the forward effect S1 as the integral of the learning rate
+    Compute the forward effect S as the integral of the learning rate
     over training steps:
-        S1(t_i) = ∑_{j<=i} η_j (step_j - step_{j-1})
+        S(t_i) = ∑_{j<=i} η_j (step_j - step_{j-1})
 
     Parameters
     ----------
@@ -23,7 +23,7 @@ def compute_S1(steps, lrs):
 
     Returns
     -------
-    S1 : np.ndarray, shape (T,)
+    S : np.ndarray, shape (T,)
         Cumulative forward effect at each step.
     """
     steps = np.array(steps).flatten()
@@ -34,19 +34,19 @@ def compute_S1(steps, lrs):
     if len(steps) != len(lrs):
         raise ValueError("steps and lrs must have the same length.")
 
-    S1 = np.zeros_like(lrs, dtype=float)
-    S1[0] = lrs[0] * steps[0]
+    S = np.zeros_like(lrs, dtype=float)
+    S[0] = lrs[0] * steps[0]
 
     for i in range(1, len(lrs)):
-        S1[i] = S1[i - 1] + lrs[i] * (steps[i] - steps[i - 1])
+        S[i] = S[i - 1] + lrs[i] * (steps[i] - steps[i - 1])
 
-    return S1
+    return S
 
 
 # ---------------------------------------------------------
 # 2. Annealing momentum S2:  Annealing Momentum (Adam-Style)
 # ---------------------------------------------------------
-def compute_S2(
+def compute_M(
     steps,
     lrs,
     beta1=0.9,
@@ -55,7 +55,7 @@ def compute_S2(
     vi_scale=1e5,
 ):
     """
-    Compute the annealing momentum S2, based on Adam-style first and second
+    Compute the annealing momentum M, based on Adam-style first and second
     moments of the LR change during decay:
 
         delta_eta_i = (η_{i-1} - η_i) * (step_i - step_{i-1})
@@ -65,7 +65,7 @@ def compute_S2(
         v_i = β2 v_{i-1} + (1 - β2) * delta_eta_i^2
 
     Then define an annealing accumulator:
-        S2_i = S2_{i-1} + m_i / (sqrt(v_i) + ε)
+        M_i = M_{i-1} + m_i / (sqrt(v_i) + ε)
 
     Parameters
     ----------
@@ -84,7 +84,7 @@ def compute_S2(
 
     Returns
     -------
-    S2 : np.ndarray, shape (T,)
+    M : np.ndarray, shape (T,)
         Annealing momentum accumulator at each step.
     """
     steps = np.array(steps).flatten()
@@ -98,7 +98,7 @@ def compute_S2(
     T = len(lrs)
     m = np.zeros(T, dtype=float)   # first moment
     v = np.zeros(T, dtype=float)   # second moment
-    S2 = np.zeros(T, dtype=float)  # cumulative annealing momentum
+    M = np.zeros(T, dtype=float)  # cumulative annealing momentum
 
     for i in range(1, T):
         width = steps[i] - steps[i - 1]
@@ -113,9 +113,9 @@ def compute_S2(
         v_hat = v[i] / (1.0 - beta2 ** (i + 1))
         v_hat = v_hat * vi_scale  # optional rescaling
 
-        S2[i] = S2[i - 1] + m_hat / (np.sqrt(v_hat + epsilon) + epsilon)
+        M[i] = M[i - 1] + m_hat / (np.sqrt(v_hat + epsilon) + epsilon)
 
-    return S2
+    return M
 
 
 # ---------------------------------------------------------
@@ -128,9 +128,9 @@ def forward_momentum_model(params, S, N, M):
         L = L0 + A * S^{-alpha_S} + B * N^{-alpha_N} - C * M
 
     where
-        S : forward effect integral (S1)
+        S : forward effect integral (S)
         N : model size (e.g., #parameters)
-        M : annealing momentum integral (S2)
+        M : annealing momentum integral (M)
 
     Parameters
     ----------
@@ -138,11 +138,11 @@ def forward_momentum_model(params, S, N, M):
         (L0, alpha_S, alpha_N, gamma_dummy, A, B, C).
         Note: gamma_dummy is kept for compatibility with the original code.
     S : array-like
-        Forward integral S1.
+        Forward integral S.
     N : array-like or scalar
         Model size. If scalar, it is broadcast to S's shape.
     M : array-like
-        Annealing momentum S2.
+        Annealing momentum M.
 
     Returns
     -------
@@ -190,9 +190,9 @@ def fit_forward_momentum(
     loss : array-like
         Observed (final) loss values.
     S : array-like
-        Forward integral (S1) for each configuration.
+        Forward integral (S) for each configuration.
     M : array-like
-        Annealing momentum integral (S2) for each configuration.
+        Annealing momentum integral (M) for each configuration.
     N : array-like or scalar
         Model size(s) corresponding to each configuration.
     initial_params : list or tuple of 7 floats
@@ -300,3 +300,4 @@ def fit_forward_momentum(
         plt.show()
 
     return y_fit, r2, mse, params_hat
+
